@@ -239,12 +239,16 @@ function doPost(e) {
   }
 }
 
-function handleCalculatePayment(body) {
+function handleCalculatePayment(body) { // FIXED
   if (!body.events || !Array.isArray(body.events)) {
-    return jsonOut_({ status: 'error', errors: { general: 'No events provided for payment calculation' } });
+    return jsonOut_({
+      status: 'error',
+      errors: { general: 'No events provided for payment calculation' }
+    });
   }
 
-  const totalAmount = calculateTotalAmount_(body.events.map(e => e.id));
+  const ss = getDatabaseSpreadsheet_();
+  const totalAmount = calculateTotalAmount_(ss, body.events.map(e => e.id));
   const paymentId = generateId_('P');
 
   return jsonOut_({
@@ -372,7 +376,7 @@ function handleRegistration(body) {
 }
 
 function handlePaymentUpdate(body) {
-  const { paymentId, utr, screenshotBase64, fileName } = body;
+  const { paymentId, utr } = body;
   if (!paymentId || !utr) return jsonOut_({ status: 'error', errors: { general: 'Missing payment details' } });
 
   const paymentSheet = getSheet_('Payments');
@@ -388,28 +392,13 @@ function handlePaymentUpdate(body) {
 
   if (rowIndex === -1) return jsonOut_({ status: 'error', errors: { general: 'Payment record not found' } });
 
-  // Handle Screenshot Upload to Drive
-  let fileUrl = '';
-  if (screenshotBase64) {
-    const folder = getOrCreateFolder_('JARVIS_Payments');
-    const blob = Utilities.newBlob(Utilities.base64Decode(screenshotBase64), 'image/png', fileName || `PAY-${paymentId}.png`);
-    const file = folder.createFile(blob);
-    fileUrl = file.getUrl();
-  }
-
   paymentSheet.getRange(rowIndex, 4).setValue(utr);
-  paymentSheet.getRange(rowIndex, 5).setValue(fileUrl);
   paymentSheet.getRange(rowIndex, 6).setValue('Pending'); // Always pending until admin verifies
   paymentSheet.getRange(rowIndex, 7).setValue(new Date());
 
   return jsonOut_({ status: 'success', message: 'Payment details submitted for verification.' });
 }
 
-function getOrCreateFolder_(name) {
-  const folders = DriveApp.getFoldersByName(name);
-  if (folders.hasNext()) return folders.next();
-  return DriveApp.createFolder(name);
-}
 
 function doGet(e) {
   const key = e && e.parameter ? e.parameter.key : '';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, AlertCircle, Info, X, ArrowRight, ArrowLeft, Upload, CreditCard, Users, Trophy } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info, X, ArrowRight, ArrowLeft, CreditCard, Users, Trophy } from 'lucide-react';
 import { GAS_CONFIG } from '../config/gasConfig';
 import { TECHNICAL_EVENTS, NON_TECHNICAL_EVENTS, EVENT_SCHEDULE } from '../config/events.jsx';
 
@@ -30,7 +30,6 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
     events: [], // { id, session }
     payment: {
       utr: '',
-      screenshot: null,
     }
   });
 
@@ -154,24 +153,12 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
 
   const prevStep = () => setStep(prev => prev - 1);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormData(prev => ({
-        ...prev,
-        payment: { ...prev.payment, screenshot: reader.result.split(',')[1] }
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (step !== 5) return;
-    if (!formData.payment.utr || !formData.payment.screenshot) {
-      setServerError('Please upload payment screenshot and enter UTR');
+    if (!formData.payment.utr) {
+      setServerError('UTR / Transaction Reference is required');
       return;
     }
 
@@ -190,8 +177,6 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
           payment: {
             paymentId: paymentData.paymentId,
             utr: formData.payment.utr,
-            screenshotBase64: formData.payment.screenshot,
-            fileName: `PAY-${paymentData.paymentId}.png`
           }
         })
       });
@@ -419,7 +404,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
             <div className="space-y-8">
               <div className="text-center mb-6">
                 <h2 className="text-3xl font-futuristic font-bold text-white">Finalize Payment</h2>
-                <p className="text-gray-400">Complete your registration by uploading the transaction screenshot</p>
+                <p className="text-gray-400">Complete your registration by entering the transaction UTR</p>
               </div>
 
               {paymentData.loading ? (
@@ -447,30 +432,6 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors"
                         placeholder="Enter 12-digit UTR number"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300 block">Payment Screenshot</label>
-                      <div className="relative group">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="hidden"
-                          id="payment-upload"
-                        />
-                        <label htmlFor="payment-upload" className="flex flex-col items-center justify-center w-full py-8 px-4 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer group-hover:border-neon-cyan transition-all bg-white/5">
-                          {formData.payment.screenshot ? (
-                            <div className="flex items-center gap-2 text-neon-cyan">
-                              <CheckCircle2 className="w-5 h-5" /> <span>Screenshot Uploaded</span>
-                            </div>
-                          ) : (
-                            <>
-                              <Upload className="w-8 h-8 text-gray-500 group-hover:text-neon-cyan mb-2 transition-colors" />
-                              <span className="text-sm text-gray-500 group-hover:text-gray-300">Click to upload screenshot</span>
-                            </>
-                          )}
-                        </label>
-                      </div>
                     </div>
                   </div>
                 </div>
