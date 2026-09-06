@@ -1,0 +1,1 @@
+export const ADMIN_GAS_URL = 'YOUR_ADMIN_GAS_WEB_APP_URL';
