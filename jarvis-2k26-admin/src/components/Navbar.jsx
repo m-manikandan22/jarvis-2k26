@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { LayoutDashboard, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, CreditCard } from 'lucide-react';
 
 function Navbar() {
   const { logout } = useContext(AuthContext);
@@ -18,6 +18,12 @@ function Navbar() {
           </Link>
           <Link to="/registrations" className="flex items-center gap-2 hover:text-yellow-400 transition-colors">
             <Users className="w-4 h-4" /> Registrations
+          </Link>
+          <Link to="/events" className="flex items-center gap-2 hover:text-yellow-400 transition-colors">
+            <Users className="w-4 h-4" /> Events
+          </Link>
+          <Link to="/payments" className="flex items-center gap-2 hover:text-yellow-400 transition-colors">
+            <CreditCard className="w-4 h-4" /> Payments
           </Link>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../App';
-import { ADMIN_GAS_URL } from '../config/adminGasConfig';
+import { adminApi } from '../services/adminApi';
+
 import { Users, UserCheck, Clock, AlertCircle } from 'lucide-react';
 
 function StatCard({ title, value, icon: Icon, color }) {
@@ -26,14 +27,7 @@ function Dashboard() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await fetch(ADMIN_GAS_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            requestType: 'getDashboardStats',
-            sessionToken
-          })
-        });
-        const result = await response.json();
+        const result = await adminApi.getDashboardStats(sessionToken);
 
         if (result.status === 'success') {
           setStats(result.data);

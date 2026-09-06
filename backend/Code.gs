@@ -99,6 +99,8 @@ function sendConfirmationEmail_(body, teamId) {
     .filter(e => e && e.includes('@'));
 
   const uniqueEmails = [...new Set(emails)];
+  console.log('JARVIS EMAIL RECIPIENTS:', JSON.stringify(uniqueEmails));
+  console.log('JARVIS EMAIL RECIPIENT COUNT:', uniqueEmails.length);
 
   if (uniqueEmails.length === 0) return;
 
@@ -193,9 +195,16 @@ JARVIS 2K26 Team, PMCTECH
   `.trim();
 
   uniqueEmails.forEach(email => {
-    GmailApp.sendEmail(email, `JARVIS 2K26 — Registration Confirmed — ${teamId}`, textFallback, {
-      htmlBody: htmlTemplate
-    });
+    try {
+      console.log('JARVIS SENDING EMAIL TO:', email);
+      GmailApp.sendEmail(email, `JARVIS 2K26 — Registration Confirmed — ${teamId}`, textFallback, {
+        htmlBody: htmlTemplate
+      });
+      console.log('JARVIS EMAIL SENT TO:', email);
+    } catch (emailErr) {
+      console.error('JARVIS EMAIL ERROR:', String(emailErr));
+      throw emailErr;
+    }
   });
 }
 
@@ -424,3 +433,35 @@ function doGet(e) {
     perEvent: perEvent
   });
 }
+
+/**
+ * TEMPORARY DIAGNOSTIC FUNCTION
+ * Used to verify Gmail sending capabilities independently of the registration flow.
+ *
+ * INSTRUCTIONS:
+ * 1. Replace 'YOUR_EMAIL@gmail.com' with your actual email address.
+ * 2. Save the script.
+ * 3. Select 'testJarvisEmail' from the function dropdown in the editor.
+ * 4. Click 'Run'.
+ * 5. Authorize the script if prompted.
+ * 6. Check Inbox, Spam, and Promotions folders.
+ */
+function testJarvisEmail() {
+  const testEmail = 'YOUR_EMAIL@gmail.com';
+
+  GmailApp.sendEmail(
+    testEmail,
+    'JARVIS 2K26 - Email Test',
+    'This is a test email from the JARVIS 2K26 Apps Script backend.',
+    {
+      htmlBody: `
+        <h2 style="color: #1a1a1a;">JARVIS 2K26</h2>
+        <p>This is a test email.</p>
+        <p>If you received this message, Gmail sending is working correctly.</p>
+      `
+    }
+  );
+
+  console.log('JARVIS EMAIL TEST COMPLETED');
+}
+

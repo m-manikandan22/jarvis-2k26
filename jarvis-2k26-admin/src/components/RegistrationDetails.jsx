@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { ADMIN_GAS_URL } from '../config/adminGasConfig';
+import { adminApi } from '../services/adminApi';
+
 import { ArrowLeft, User, GraduationCap, BookOpen, CreditCard, Loader2, Users } from 'lucide-react';
 
 function RegistrationDetails() {
@@ -15,15 +16,7 @@ function RegistrationDetails() {
   useEffect(() => {
     async function fetchDetails() {
       try {
-        const response = await fetch(ADMIN_GAS_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            requestType: 'getRegistrationDetails',
-            sessionToken,
-            teamId: id
-          })
-        });
-        const result = await response.json();
+        const result = await adminApi.getRegistrationDetails(sessionToken, id);
 
         if (result.status === 'success') {
           setData(result.data);

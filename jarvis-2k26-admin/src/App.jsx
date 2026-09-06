@@ -4,6 +4,8 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import RegistrationsList from './components/RegistrationsList';
 import RegistrationDetails from './components/RegistrationDetails';
+import Payments from './components/Payments';
+import EventParticipants from './components/EventParticipants';
 import Navbar from './components/Navbar';
 
 export const AuthContext = createContext(null);
@@ -31,6 +33,8 @@ function App() {
               <Route path="/login" element={!sessionToken ? <Login /> : <Navigate to="/" />} />
               <Route path="/" element={sessionToken ? <Dashboard /> : <Navigate to="/login" />} />
               <Route path="/registrations" element={sessionToken ? <RegistrationsList /> : <Navigate to="/login" />} />
+              <Route path="/payments" element={sessionToken ? <Payments /> : <Navigate to="/login" />} />
+              <Route path="/events" element={sessionToken ? <EventParticipants /> : <Navigate to="/login" />} />
               <Route path="/registration/:id" element={sessionToken ? <RegistrationDetails /> : <Navigate to="/login" />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { ADMIN_GAS_URL } from '../config/adminGasConfig';
+import { adminApi } from '../services/adminApi';
+
 import { Search, ExternalLink, Loader2 } from 'lucide-react';
 
 function RegistrationsList() {
@@ -14,14 +15,7 @@ function RegistrationsList() {
   useEffect(() => {
     async function fetchRegistrations() {
       try {
-        const response = await fetch(ADMIN_GAS_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            requestType: 'getRegistrations',
-            sessionToken
-          })
-        });
-        const result = await response.json();
+        const result = await adminApi.getRegistrations(sessionToken);
 
         if (result.status === 'success') {
           setRegistrations(result.data);
