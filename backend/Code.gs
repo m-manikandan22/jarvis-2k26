@@ -8,16 +8,23 @@ const SESSION_EXPIRY_SECONDS = 7200; // 2 hours
 
 const EVENT_SCHEDULE = {
   'technova': { title: 'TECHNOVA', session: 'FULL_DAY', venue: 'Auditorium' },
-  'coderelay': { title: 'CODERELAY', session: 'MORNING', venue: 'NH1' },
-  'funfiesta': { title: 'FUNFIESTA', session: 'MORNING', venue: 'NH2' },
-  'listenlink': { title: 'LISTENLINK', session: 'MORNING', venue: 'NH3' },
-  'bytebattles': { title: 'BYTEBATTLES', session: 'MORNING', venue: 'NH4' },
-  'cyberarena': { title: 'CYBERARENA', session: 'FULL_DAY', venue: 'NH5' },
-  'hackonomics': { title: 'HACKONOMICS', session: 'EVENING', venue: 'NH1' },
-  'aiwhisperer': { title: 'AIWHISPERER', session: 'EVENING', venue: 'NH2' },
-  'corporatequest': { title: 'CORPORATEQUEST', session: 'EVENING', venue: 'NH3' },
-  'chaosroom': { title: 'CHAOSROOM', session: 'EVENING', venue: 'NH4' },
+  'coderelay': { title: 'CODE RUSH', session: 'MORNING', venue: 'NH1' },
+  'funfiesta': { title: 'FUNFEST', session: 'MORNING', venue: 'NH2' },
+  'listenlink': { title: 'LISTEN & WIN', session: 'MORNING', venue: 'NH3' },
+  'bytebattles': { title: 'TECH CLASH', session: 'MORNING', venue: 'NH4' },
+  'cyberarena': { title: 'ARENA X', session: 'FULL_DAY', venue: 'NH5' },
+  'hackonomics': { title: 'BRAINBID', session: 'EVENING', venue: 'NH1' },
+  'aiwhisperer': { title: 'PROMPT WARS', session: 'EVENING', venue: 'NH2' },
+  'corporatequest': { title: 'THE FINAL ROUND', session: 'EVENING', venue: 'NH3' },
+  'chaosroom': { title: 'ESCAPE ROOM: CHAOS', session: 'EVENING', venue: 'NH4' },
 };
+
+function esc_(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // --- Utilities ---
 
 function jsonOut_(obj) {
@@ -49,18 +56,19 @@ function verifyCredentials_(username, password) {
 
   if (!storedPass) throw new Error('Admin password not configured in Script Properties.');
 
-  return (username === storedUser && password === storedPass);
+  return (String(username || '').trim() === String(storedUser).trim() &&
+          String(password || '').trim() === String(storedPass).trim());
 }
 
 function createSession_() {
   const token = Utilities.getUuid();
-  CacheService.getUserCache().put(token, 'authenticated', SESSION_EXPIRY_SECONDS);
+  CacheService.getScriptCache().put(token, 'authenticated', SESSION_EXPIRY_SECONDS);
   return token;
 }
 
 function isValidSession_(token) {
   if (!token) return false;
-  const session = CacheService.getUserCache().get(token);
+  const session = CacheService.getScriptCache().get(token);
   return session === 'authenticated';
 }
 
@@ -153,8 +161,15 @@ function getRegistrationDetails_(teamId) {
 
   const regEventsSheet = getSheet_('RegistrationEvents');
   const eventData = regEventsSheet.getDataRange().getValues().slice(1);
+  const seenEvents = {};
   const events = eventData
-    .filter(row => row[1] === teamId)
+    .filter(row => {
+      if (row[1] !== teamId) return false;
+      const k = row[3] + '|' + row[4];
+      if (seenEvents[k]) return false;   // each member has a row per event; show each event once
+      seenEvents[k] = true;
+      return true;
+    })
     .map(row => {
       const eventId = row[3];
       // Since EVENT_SCHEDULE is in the other project, we might need to return the ID
@@ -247,10 +262,14 @@ function getEventParticipants_(eventId) {
 function sendETicketEmail_(teamId) {
   const details = getRegistrationDetails_(teamId);
   const members = details.members;
-  const emails = members.map(m => String(m.email || '').trim().toLowerCase()).filter(e => e && e.includes('@'));
-  const uniqueEmails = [...new Set(emails)];
 
-  if (uniqueEmails.length === 0) return;
+  // E-ticket goes ONLY to the team captain (leader)
+  const captain = members.find(m => m.memberId === details.captainId) || members[0];
+  const captainEmail = captain ? String(captain.email || '').trim().toLowerCase() : '';
+  if (!captainEmail || !captainEmail.includes('@')) {
+    return { sent: false, reason: 'Captain email is missing or invalid.' };
+  }
+  const uniqueEmails = [captainEmail];
 
   const teamName = details.teamName;
 
@@ -258,13 +277,13 @@ function sendETicketEmail_(teamId) {
     const sched = EVENT_SCHEDULE[sel.eventId];
     return `
       <tr style="border-bottom: 1px solid #ddd;">
-        <td style="padding: 10px; font-weight: bold;">${sched ? sched.title : 'Event ' + sel.eventId}</td>
-        <td style="padding: 10px;">${sel.session.replace('_', ' ')}</td>
-        <td style="padding: 10px;">${sched ? sched.venue : 'TBA'}</td>
+        <td style="padding: 10px; font-weight: bold;">${esc_(sched ? sched.title : 'Event ' + sel.eventId)}</td>
+        <td style="padding: 10px;">${esc_(String(sel.session).replace('_', ' '))}</td>
+        <td style="padding: 10px;">${esc_(sched ? sched.venue : 'TBA')}</td>
       </tr>`;
   }).join('');
 
-  const membersListHtml = members.map(m => `<li>${m.fullName}</li>`).join('');
+  const membersListHtml = members.map(m => `<li>${esc_(m.fullName)}${m.memberId === details.captainId ? ' (Captain)' : ''}</li>`).join('');
 
   const htmlTemplate = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden; color: #333;">
@@ -273,6 +292,7 @@ function sendETicketEmail_(teamId) {
         <p style="margin: 5px 0 0; font-size: 16px; opacity: 0.8;">OFFICIAL E-TICKET</p>
       </div>
       <div style="padding: 30px; line-height: 1.6;">
+        <p>Hi ${esc_(captain.fullName)},</p>
         <p>Congratulations!</p>
         <p>Your payment has been verified, and your registration for <strong>JARVIS 2K26</strong> is now fully confirmed.</p>
 
@@ -282,7 +302,7 @@ function sendETicketEmail_(teamId) {
         </div>
 
         <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; color: #000;">Team Details</h3>
-        <p style="margin: 5px 0;"><strong>Team Name:</strong> ${teamName}</p>
+        <p style="margin: 5px 0;"><strong>Team Name:</strong> ${esc_(teamName)}</p>
 
         <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 25px; color: #000;">Your Registered Events</h3>
         <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px;">
@@ -326,15 +346,16 @@ Please keep this email for entry.
 JARVIS 2K26 Team, PMCTECH
   `.trim();
 
-  uniqueEmails.forEach(email => {
-    try {
-      GmailApp.sendEmail(email, `JARVIS 2K26 — Official E-Ticket — ${teamId}`, textFallback, {
-        htmlBody: htmlTemplate
-      });
-    } catch (e) {
-      console.error('ETICKET_EMAIL_ERROR: ' + e.message);
-    }
-  });
+  try {
+    GmailApp.sendEmail(captainEmail, `JARVIS 2K26 — Official E-Ticket — ${teamId}`, textFallback, {
+      htmlBody: htmlTemplate,
+      name: 'JARVIS 2K26'
+    });
+    return { sent: true, to: captainEmail };
+  } catch (e) {
+    console.error('ETICKET_EMAIL_ERROR: ' + e.message);
+    return { sent: false, reason: e.message };
+  }
 }
 
 function updatePaymentStatus_(paymentId, status) {
@@ -363,6 +384,16 @@ function updatePaymentStatus_(paymentId, status) {
   paymentSheet.getRange(rowIndex, 8).setValue(verifiedAt);
 
   return { status: 'success', newStatus: status };
+}
+
+function changePaymentStatus_(paymentId, status) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    return updatePaymentStatus_(paymentId, status);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // --- Main API ---
@@ -402,42 +433,41 @@ function doPost(e) {
       case 'getEventParticipants':
         if (!body.eventId) return jsonOut_({ status: 'error', message: 'eventId is required' });
         return jsonOut_({ status: 'success', data: getEventParticipants_(body.eventId) });
-      case 'verifyPayment':
+      case 'verifyPayment': {
         if (!body.paymentId) return jsonOut_({ status: 'error', message: 'paymentId is required' });
         try {
-          const lock = LockService.getScriptLock();
-          lock.waitLock(15000);
-          const result = updatePaymentStatus_(body.paymentId, 'Verified');
-          lock.releaseLock();
-
-          // Trigger E-Ticket Email
-          try {
-            const paymentSheet = getSheet_('Payments');
-            const pData = paymentSheet.getDataRange().getValues();
-            const pRow = pData.find(row => row[0] === body.paymentId);
-            if (pRow) {
-              sendETicketEmail_(pRow[1]); // pRow[1] is TeamID
-            }
-          } catch (emailErr) {
-            console.error('E-TICKET_TRIGGER_ERROR: ' + emailErr.message);
-            // We don't throw here because payment was already verified
-          }
-
-          return jsonOut_({ status: 'success', message: 'Payment verified and e-ticket sent successfully.' });
+          changePaymentStatus_(body.paymentId, 'Verified');
         } catch (err) {
           return jsonOut_({ status: 'error', message: err.message });
         }
-      case 'rejectPayment':
+
+        // Payment is verified; now email the e-ticket to the captain only
+        let mail = { sent: false, reason: 'Unknown error' };
+        try {
+          const pRow = getSheet_('Payments').getDataRange().getValues().find(row => row[0] === body.paymentId);
+          if (pRow) mail = sendETicketEmail_(pRow[1]); // pRow[1] is TeamID
+        } catch (emailErr) {
+          console.error('E-TICKET_TRIGGER_ERROR: ' + emailErr.message);
+          mail = { sent: false, reason: emailErr.message };
+        }
+
+        return jsonOut_({
+          status: 'success',
+          emailSent: mail.sent,
+          message: mail.sent
+            ? 'Payment verified and e-ticket sent to the team captain (' + mail.to + ').'
+            : 'Payment verified, but the e-ticket email could not be sent: ' + mail.reason
+        });
+      }
+      case 'rejectPayment': {
         if (!body.paymentId) return jsonOut_({ status: 'error', message: 'paymentId is required' });
         try {
-          const lock = LockService.getScriptLock();
-          lock.waitLock(15000);
-          const result = updatePaymentStatus_(body.paymentId, 'Rejected');
-          lock.releaseLock();
+          changePaymentStatus_(body.paymentId, 'Rejected');
           return jsonOut_({ status: 'success', message: 'Payment rejected successfully.' });
         } catch (err) {
           return jsonOut_({ status: 'error', message: err.message });
         }
+      }
       default:
         return jsonOut_({ status: 'error', message: 'Invalid request type' });
     }

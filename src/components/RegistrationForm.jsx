@@ -14,7 +14,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
   const [registrationId, setRegistrationId] = useState('');
 
   // Payment state
-  const [paymentData, setPaymentData] = useState({ totalAmount: null, paymentId: null, loading: false });
+  const [paymentData, setPaymentData] = useState({ totalAmount: null, paymentId: null, upiId: '', loading: false });
 
   const [formData, setFormData] = useState({
     teamName: '',
@@ -138,10 +138,12 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
         });
         const data = await response.json();
         if (data.status === 'success') {
-          setPaymentData({ totalAmount: data.totalAmount, paymentId: data.paymentId, loading: false });
+          setPaymentData({ totalAmount: data.totalAmount, paymentId: data.paymentId, upiId: data.upiId || '', loading: false });
+          setServerError('');
           setStep(5);
         } else {
           setServerError(data.errors?.general || 'Payment calculation failed');
+          setPaymentData(prev => ({ ...prev, loading: false }));
         }
       } catch (err) {
         setServerError('Payment server unavailable. Please try again.');
@@ -418,7 +420,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
                       <p className="text-4xl font-futuristic font-bold text-white">₹{paymentData.totalAmount}</p>
                     </div>
                     <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-neon-cyan text-lg">
-                      {GAS_CONFIG.upiId || 'your-upi@bank'}
+                      {paymentData.upiId || GAS_CONFIG.upiId || 'your-upi@bank'}
                     </div>
                   </div>
 
