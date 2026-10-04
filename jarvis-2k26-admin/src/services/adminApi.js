@@ -86,4 +86,12 @@ export const adminApi = {
       paymentId,
     });
   },
+
+  getEventParticipants: async (sessionToken, eventId) => {
+    return request({
+      requestType: 'getEventParticipants',
+      sessionToken,
+      eventId,
+    });
+  },
 };

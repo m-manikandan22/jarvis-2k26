@@ -4,16 +4,16 @@ import { adminApi } from '../services/adminApi';
 import { Search, Download, Loader2, Users } from 'lucide-react';
 
 const EVENT_SCHEDULE = {
-  'technova': 'Paper Symposium',
-  'coderelay': 'Relay Coding',
-  'funfiesta': 'Carnival Games',
-  'listenlink': 'Guess the Hacker',
-  'bytebattles': 'Tech Debate',
-  'cyberarena': 'E-Sports',
-  'hackonomics': 'Mystery Box',
-  'aiwhisperer': 'Prompt Engineering Battle',
-  'corporatequest': 'HR Interview',
-  'chaosroom': 'Chaos Room',
+  'technova': 'TECHNOVA',
+  'hackonomics': 'BRAINBID',
+  'bytebattles': 'TECH CLASH',
+  'aiwhisperer': 'PROMPT WARS',
+  'coderelay': 'CODE RUSH',
+  'cyberarena': 'ARENA X',
+  'funfiesta': 'FUNFEST',
+  'corporatequest': 'THE FINAL ROUND',
+  'chaosroom': 'ESCAPE ROOM: CHAOS',
+  'listenlink': 'LISTEN & WIN',
 };
 
 function EventParticipants() {
