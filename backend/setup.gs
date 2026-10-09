@@ -14,7 +14,8 @@ const SCHEMA = {
 
 const DEFAULT_CONFIG = {
   'UPI_ID': 'your-upi-id@bank',
-  'BASE_TEAM_FEE': '100',
+  'BASE_TEAM_FEE': '0',
+  'PER_HEAD_FEE': '200',
   'EVENT_PRICES_JSON': JSON.stringify({
     'technova': 50,
     'coderelay': 50,

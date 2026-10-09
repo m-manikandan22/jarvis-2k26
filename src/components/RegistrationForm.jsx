@@ -14,7 +14,13 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
   const [registrationId, setRegistrationId] = useState('');
 
   // Payment state
-  const [paymentData, setPaymentData] = useState({ totalAmount: null, paymentId: null, upiId: '', loading: false });
+  const [paymentData, setPaymentData] = useState({
+    totalAmount: null,
+    paymentId: null,
+    upiId: '',
+    loading: false,
+    breakdown: { newCount: 0, existingCount: 0, feePerHead: 0 }
+  });
 
   const [formData, setFormData] = useState({
     teamName: '',
@@ -138,7 +144,13 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
         });
         const data = await response.json();
         if (data.status === 'success') {
-          setPaymentData({ totalAmount: data.totalAmount, paymentId: data.paymentId, upiId: data.upiId || '', loading: false });
+          setPaymentData({
+            totalAmount: data.totalAmount,
+            paymentId: data.paymentId,
+            upiId: data.upiId || '',
+            loading: false,
+            breakdown: data.breakdown || { newCount: 0, existingCount: 0, feePerHead: 0 }
+          });
           setServerError('');
           setStep(5);
         } else {
@@ -159,7 +171,9 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (step !== 5) return;
-    if (!formData.payment.utr) {
+
+    // Only require UTR if payment is > 0
+    if (paymentData.totalAmount > 0 && !formData.payment.utr) {
       setServerError('UTR / Transaction Reference is required');
       return;
     }
@@ -406,7 +420,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
             <div className="space-y-8">
               <div className="text-center mb-6">
                 <h2 className="text-3xl font-futuristic font-bold text-white">Finalize Payment</h2>
-                <p className="text-gray-400">Complete your registration by entering the transaction UTR</p>
+                <p className="text-gray-400">Complete your registration</p>
               </div>
 
               {paymentData.loading ? (
@@ -415,27 +429,39 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
                 <div className="max-w-md mx-auto space-y-8">
                   <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center space-y-4">
                     <CreditCard className="w-12 h-12 text-neon-cyan mx-auto" />
-                    <div>
+                    <div className="space-y-2">
                       <p className="text-gray-400 text-sm uppercase tracking-widest">Total Amount Payable</p>
                       <p className="text-4xl font-futuristic font-bold text-white">₹{paymentData.totalAmount}</p>
                     </div>
-                    <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-neon-cyan text-lg">
-                      {paymentData.upiId || GAS_CONFIG.upiId || 'your-upi@bank'}
-                    </div>
+
+                    {paymentData.breakdown && (
+                      <div className="text-xs font-mono text-gray-500 space-y-1 py-2 border-y border-white/5">
+                        <p>{paymentData.breakdown.newCount} new participants × ₹{paymentData.breakdown.feePerHead}</p>
+                        <p>{paymentData.breakdown.existingCount} already registered — no charge</p>
+                      </div>
+                    )}
+
+                    {paymentData.totalAmount > 0 && (
+                      <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-neon-cyan text-lg">
+                        {paymentData.upiId || GAS_CONFIG.upiId || 'your-upi@bank'}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300 block">UTR / Transaction Reference</label>
-                      <input
-                        type="text"
-                        value={formData.payment.utr}
-                        onChange={(e) => setFormData(prev => ({ ...prev, payment: { ...prev.payment, utr: e.target.value } }))}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors"
-                        placeholder="Enter 12-digit UTR number"
-                      />
+                  {paymentData.totalAmount > 0 && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-300 block">UTR / Transaction Reference</label>
+                        <input
+                          type="text"
+                          value={formData.payment.utr}
+                          onChange={(e) => setFormData(prev => ({ ...prev, payment: { ...prev.payment, utr: e.target.value } }))}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors"
+                          placeholder="Enter 12-digit UTR number"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

@@ -5,7 +5,7 @@
  * when this project is bound to the spreadsheet).
  *
  * Requests handled (JSON body sent as text/plain):
- *   calculatePayment -> { status, totalAmount, paymentId, upiId }
+ *   calculatePayment -> { status, totalAmount, paymentId, upiId, breakdown }
  *   registration     -> { status, teamId, paymentId, totalAmount }
  * Errors are returned as { status: 'error', errors: { general: '...' } }.
  *
@@ -61,12 +61,29 @@ function getConfig_(ss) {
   return cfg;
 }
 
-function calculateTotal_(cfg, events) {
-  let prices = {};
-  try { prices = JSON.parse(cfg.EVENT_PRICES_JSON || '{}'); } catch (e) { prices = {}; }
-  let total = Number(cfg.BASE_TEAM_FEE || 0);
-  events.forEach(ev => { total += Number(prices[ev.id] || 0); });
-  return total;
+function calculatePaymentTotal_(cfg, everyone, memberSheet) {
+  const perHeadFee = Number(cfg.PER_HEAD_FEE || 0);
+  const existingEmails = memberSheet.getDataRange().getValues().slice(1).map(r => String(r[6]).trim().toLowerCase());
+
+  let newParticipants = 0;
+  let existingParticipants = 0;
+
+  everyone.forEach(p => {
+    if (existingEmails.includes(p.email.toLowerCase())) {
+      existingParticipants++;
+    } else {
+      newParticipants++;
+    }
+  });
+
+  return {
+    totalAmount: newParticipants * perHeadFee,
+    breakdown: {
+      newCount: newParticipants,
+      existingCount: existingParticipants,
+      feePerHead: perHeadFee
+    }
+  };
 }
 
 function newId_(prefix, len) {
@@ -142,10 +159,17 @@ function handleCalculate_(body) {
   const v = validateAndNormalize_(body);
   if (v.error) return fail_(v.error);
 
-  const cfg = getConfig_(getDb_());
+  const ss = getDb_();
+  const cfg = getConfig_(ss);
+  const memberSheet = ss.getSheetByName('Members');
+
+  const everyone = [v.clean.captain].concat(v.clean.members);
+  const paymentInfo = calculatePaymentTotal_(cfg, everyone, memberSheet);
+
   return jsonOut_({
     status: 'success',
-    totalAmount: calculateTotal_(cfg, v.clean.events),
+    totalAmount: paymentInfo.totalAmount,
+    breakdown: paymentInfo.breakdown,
     paymentId: newId_('PAY-', 10),
     upiId: cfg.UPI_ID || ''
   });
@@ -156,8 +180,7 @@ function handleRegistration_(body) {
   if (v.error) return fail_(v.error);
   const data = v.clean;
 
-  const utr = String(body.payment && body.payment.utr || '').trim();
-  if (!/^[A-Za-z0-9]{6,30}$/.test(utr)) return fail_('Enter a valid UTR / transaction reference');
+  let utr = String(body.payment && body.payment.utr || '').trim();
 
   const lock = LockService.getScriptLock();
   try {
@@ -181,8 +204,19 @@ function handleRegistration_(body) {
     if (teams.some(r => String(r[1]).trim().toLowerCase() === data.teamName.toLowerCase())) {
       return fail_('A team with this name is already registered');
     }
-    if (payments.some(r => String(r[3]).trim().toLowerCase() === utr.toLowerCase())) {
-      return fail_('This UTR has already been used');
+
+    // Re-calculate payment server-side under lock
+    const everyone = [data.captain].concat(data.members);
+    const paymentInfo = calculatePaymentTotal_(cfg, everyone, memberSheet);
+    const total = paymentInfo.totalAmount;
+
+    if (total > 0) {
+      if (!/^[A-Za-z0-9]{6,30}$/.test(utr)) return fail_('Enter a valid UTR / transaction reference');
+      if (payments.some(r => String(r[3]).trim().toLowerCase() === utr.toLowerCase())) {
+        return fail_('This UTR has already been used');
+      }
+    } else {
+      utr = 'NO_PAYMENT';
     }
 
     // IDs
@@ -199,10 +233,8 @@ function handleRegistration_(body) {
     }
 
     const now = new Date();
-    const total = calculateTotal_(cfg, data.events);   // always recomputed server-side
 
     // Build rows
-    const everyone = [data.captain].concat(data.members);
     const memberIds = everyone.map(() => newId_('M-', 8));
     const captainMemberId = memberIds[0];
 
@@ -216,7 +248,10 @@ function handleRegistration_(body) {
         eventRows.push([newId_('RE-', 10), teamId, memberIds[i], ev.id, ev.session, now]);
       });
     });
-    const paymentRow = [[paymentId, teamId, total, utr, '', 'Pending', now, '']];
+
+    const status = (total === 0) ? 'Verified' : 'Pending';
+    const verifiedAt = (total === 0) ? now : '';
+    const paymentRow = [[paymentId, teamId, total, utr, '', status, now, verifiedAt]];
 
     // Write
     appendRows_(teamSheet, teamRow);
@@ -273,8 +308,8 @@ function sendRegistrationEmailToCaptain_(r) {
       '<p style="margin:5px 0 0;font-size:16px;opacity:.8;">REGISTRATION RECEIVED</p></div>' +
     '<div style="padding:30px;line-height:1.6;">' +
       '<p>Hi ' + esc_(d.captain.fullName) + ',</p>' +
-      '<p>We have received your registration for <strong>JARVIS 2K26</strong>. Your payment is now <strong>pending verification</strong>. ' +
-      'Once it is approved, your official e-ticket will be emailed to you.</p>' +
+      '<p>We have received your registration for <strong>JARVIS 2K26</strong>. Your payment is now <strong>' + (r.total === 0 ? 'Verified' : 'pending verification') + '</strong>. ' +
+      (r.total === 0 ? 'Since you were already registered, no payment was required.' : 'Once it is approved, your official e-ticket will be emailed to you.') + '</p>' +
       '<div style="background:#f9f9f9;border-left:4px solid #000;padding:20px;margin:25px 0;text-align:center;">' +
         '<span style="display:block;font-size:14px;color:#666;margin-bottom:5px;">Registration ID</span>' +
         '<strong style="font-size:22px;font-family:monospace;">' + esc_(r.teamId) + '</strong></div>' +
@@ -297,7 +332,7 @@ function sendRegistrationEmailToCaptain_(r) {
   const text = 'JARVIS 2K26 - Registration Received\n' +
     'Registration ID: ' + r.teamId + '\nTeam: ' + d.teamName + '\nAmount: Rs.' + r.total + '\nUTR: ' + r.utr + '\n' +
     'Events: ' + d.events.map(e => EVENT_SCHEDULE[e.id].title).join(', ') + '\n\n' +
-    'Your payment is pending verification. Your e-ticket will be emailed once approved.\nJARVIS 2K26 Team, PMCTECH';
+    (r.total === 0 ? 'Your registration is already verified.' : 'Your payment is pending verification. Your e-ticket will be emailed once approved.') + '\nJARVIS 2K26 Team, PMCTECH';
 
   MailApp.sendEmail({
     to: to,
