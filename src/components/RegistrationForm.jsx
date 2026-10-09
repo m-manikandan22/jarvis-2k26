@@ -13,15 +13,6 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
   const [serverError, setServerError] = useState('');
   const [registrationId, setRegistrationId] = useState('');
 
-  // Payment state
-  const [paymentData, setPaymentData] = useState({
-    totalAmount: null,
-    paymentId: null,
-    upiId: '',
-    loading: false,
-    breakdown: { newCount: 0, existingCount: 0, feePerHead: 0 }
-  });
-
   const [formData, setFormData] = useState({
     teamName: '',
     captain: {
@@ -34,9 +25,6 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
     },
     members: [], // Array of { fullName, collegeName, department, yearOfStudy, email, phone }
     events: [], // { id, session }
-    payment: {
-      utr: '',
-    }
   });
 
   const [errors, setErrors] = useState({});
@@ -126,43 +114,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
 
   const nextStep = async () => {
     if (!validateStep()) return;
-
-    if (step === 4) {
-      // Transition to payment requires fetching total amount from server
-      setPaymentData(prev => ({ ...prev, loading: true }));
-      try {
-        const response = await fetch(GAS_CONFIG.webAppUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-              requestType: 'calculatePayment',
-            teamName: formData.teamName,
-            events: formData.events,
-            captain: formData.captain,
-            members: formData.members
-          })
-        });
-        const data = await response.json();
-        if (data.status === 'success') {
-          setPaymentData({
-            totalAmount: data.totalAmount,
-            paymentId: data.paymentId,
-            upiId: data.upiId || '',
-            loading: false,
-            breakdown: data.breakdown || { newCount: 0, existingCount: 0, feePerHead: 0 }
-          });
-          setServerError('');
-          setStep(5);
-        } else {
-          setServerError(data.errors?.general || 'Payment calculation failed');
-          setPaymentData(prev => ({ ...prev, loading: false }));
-        }
-      } catch (err) {
-        setServerError('Payment server unavailable. Please try again.');
-      }
-    } else {
-      setStep(prev => prev + 1);
-    }
+    setStep(prev => prev + 1);
   };
 
   const prevStep = () => setStep(prev => prev - 1);
@@ -170,13 +122,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (step !== 5) return;
-
-    // Only require UTR if payment is > 0
-    if (paymentData.totalAmount > 0 && !formData.payment.utr) {
-      setServerError('UTR / Transaction Reference is required');
-      return;
-    }
+    if (step !== 4) return;
 
     setSubmitting(true);
     setServerError('');
@@ -190,10 +136,6 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
           captain: formData.captain,
           members: formData.members,
           events: formData.events,
-          payment: {
-            paymentId: paymentData.paymentId,
-            utr: formData.payment.utr,
-          }
         })
       });
       const data = await response.json();
@@ -219,8 +161,8 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
             <CheckCircle2 className="w-16 h-16" />
           </div>
         </div>
-        <h2 className="text-3xl font-futuristic font-bold text-white mb-4">Registration Confirmed!</h2>
-        <p className="text-gray-400 text-lg mb-4">Your team has been successfully registered for JARVIS 2K26.</p>
+        <h2 className="text-3xl font-futuristic font-bold text-black mb-4">Registration Confirmed!</h2>
+        <p className="text-gray-600 text-lg mb-4">Your team has been successfully registered for JARVIS 2K26.</p>
         <p className="text-neon-cyan font-mono text-xl mb-10">Team ID: {registrationId}</p>
         <button onClick={onSuccess} className="btn-primary px-10 py-3">Return to Home</button>
       </motion.div>
@@ -237,14 +179,14 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
 
   return (
     <>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto overflow-y-auto max-h-screen pb-10">
       <div className="mb-8 flex justify-between items-center">
         <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map(i => (
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className={`h-1 w-12 rounded-full transition-colors ${step >= i ? 'bg-neon-cyan' : 'bg-white/10'}`} />
           ))}
         </div>
-        <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">Step {step} of 5</span>
+        <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">Step {step} of 4</span>
       </div>
 
       <AnimatePresence mode="wait">
@@ -259,14 +201,15 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
           {step === 1 && (
             <div className="space-y-6 text-center py-10">
               <div className="flex justify-center mb-4"><Trophy className="w-12 h-12 text-neon-cyan" /></div>
-              <h2 className="text-3xl font-futuristic font-bold text-white">Establish Your Team</h2>
+              <h2 className="text-3xl font-futuristic font-bold text-black">Establish Your Team</h2>
+              <p className="text-gray-600 font-medium mb-4">Registration Fee: <span className="text-black font-bold">₹200 per head</span></p>
               <div className="max-w-md mx-auto space-y-2">
-                <label className="text-sm font-medium text-gray-300 block text-left">Team Name</label>
+                <label className="text-sm font-medium text-gray-600 block text-left">Team Name</label>
                 <input
                   type="text"
                   value={formData.teamName}
                   onChange={(e) => handleInputChange('root', 'teamName', e.target.value)}
-                  className={`w-full bg-white/5 border ${errors.teamName ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors`}
+                  className={`w-full bg-white border ${errors.teamName ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-black focus:outline-none focus:border-neon-cyan transition-colors`}
                   placeholder="e.g. AI Warriors"
                 />
                 {errors.teamName && <p className="text-red-500 text-xs text-left">{errors.teamName}</p>}
@@ -277,81 +220,81 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
           {step === 2 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <h2 className="text-3xl font-futuristic font-bold text-white">Captain Details</h2>
-                <p className="text-gray-400">The primary contact for the team</p>
+                <h2 className="text-3xl font-futuristic font-bold text-black">Captain Details</h2>
+                <p className="text-gray-600">The primary contact for the team</p>
               </div>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-300 block">Full Name</label>
-                  <input type="text" value={formData.captain.fullName} onChange={(e) => handleInputChange('captain', 'fullName', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
-                  {errors.fullName && <p className="text-red-500 text-xs">{errors.fullName}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-300 block">College Name</label>
-                  <input type="text" value={formData.captain.collegeName} onChange={(e) => handleInputChange('captain', 'collegeName', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
-                  {errors.collegeName && <p className="text-red-500 text-xs">{errors.collegeName}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-300 block">Department</label>
-                  <input type="text" value={formData.captain.department} onChange={(e) => handleInputChange('captain', 'department', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
-                  {errors.department && <p className="text-red-500 text-xs">{errors.department}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-300 block">Year of Study</label>
-                  <select value={formData.captain.yearOfStudy} onChange={(e) => handleInputChange('captain', 'yearOfStudy', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors appearance-none">
-                    <option value="1" className="bg-space-black">1st Year</option>
-                    <option value="2" className="bg-space-black">2nd Year</option>
-                    <option value="3" className="bg-space-black">3rd Year</option>
-                    <option value="4" className="bg-space-black">4th Year</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-300 block">Email</label>
-                  <input type="email" value={formData.captain.email} onChange={(e) => handleInputChange('captain', 'email', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
-                  {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-300 block">Phone</label>
-                  <input type="tel" value={formData.captain.phone} onChange={(e) => handleInputChange('captain', 'phone', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
-                  {errors.phone && <p className="text-red-500 text-xs">{errors.phone}</p>}
-                </div>
-              </div>
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-600 block">Full Name</label>
+                          <input type="text" value={formData.captain.fullName} onChange={(e) => handleInputChange('captain', 'fullName', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
+                          {errors.fullName && <p className="text-red-500 text-xs">{errors.fullName}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-600 block">College Name</label>
+                          <input type="text" value={formData.captain.collegeName} onChange={(e) => handleInputChange('captain', 'collegeName', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
+                          {errors.collegeName && <p className="text-red-500 text-xs">{errors.collegeName}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-600 block">Department</label>
+                          <input type="text" value={formData.captain.department} onChange={(e) => handleInputChange('captain', 'department', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
+                          {errors.department && <p className="text-red-500 text-xs">{errors.department}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-600 block">Year of Study</label>
+                          <select value={formData.captain.yearOfStudy} onChange={(e) => handleInputChange('captain', 'yearOfStudy', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-neon-cyan transition-colors appearance-none">
+                            <option value="1" className="bg-white text-black">1st Year</option>
+                            <option value="2" className="bg-white text-black">2nd Year</option>
+                            <option value="3" className="bg-white text-black">3rd Year</option>
+                            <option value="4" className="bg-white text-black">4th Year</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-600 block">Email</label>
+                          <input type="email" value={formData.captain.email} onChange={(e) => handleInputChange('captain', 'email', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
+                          {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-600 block">Phone</label>
+                          <input type="tel" value={formData.captain.phone} onChange={(e) => handleInputChange('captain', 'phone', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
+                          {errors.phone && <p className="text-red-500 text-xs">{errors.phone}</p>}
+                        </div>
+                      </div>
             </div>
           )}
 
-          {step === 3 && (
+            {step === 3 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <h2 className="text-3xl font-futuristic font-bold text-white">Assemble Your Team</h2>
-                <p className="text-gray-400">Add the other members of your squad</p>
+                <h2 className="text-3xl font-futuristic font-bold text-black">Assemble Your Team</h2>
+                <p className="text-gray-600">Add the other members of your squad</p>
               </div>
               <div className="space-y-4">
                 {formData.members.map((m, i) => (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4 relative">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={i} className="p-6 rounded-2xl bg-white border border-gray-200 space-y-4 relative">
                     <button type="button" onClick={() => removeTeamMember(i)} className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-400 uppercase">Full Name</label>
-                        <input type="text" value={m.fullName} onChange={(e) => handleMemberChange(i, 'fullName', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
+                        <label className="text-xs font-medium text-gray-600 uppercase">Full Name</label>
+                        <input type="text" value={m.fullName} onChange={(e) => handleMemberChange(i, 'fullName', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
                         {errors[`m${i}_name`] && <p className="text-red-500 text-xs">{errors[`m${i}_name`]}</p>}
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-400 uppercase">Email</label>
-                        <input type="email" value={m.email} onChange={(e) => handleMemberChange(i, 'email', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
+                        <label className="text-xs font-medium text-gray-600 uppercase">Email</label>
+                        <input type="email" value={m.email} onChange={(e) => handleMemberChange(i, 'email', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
                         {errors[`m${i}_email`] && <p className="text-red-500 text-xs">{errors[`m${i}_email`]}</p>}
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-400 uppercase">College</label>
-                        <input type="text" value={m.collegeName} onChange={(e) => handleMemberChange(i, 'collegeName', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
+                        <label className="text-xs font-medium text-gray-600 uppercase">College</label>
+                        <input type="text" value={m.collegeName} onChange={(e) => handleMemberChange(i, 'collegeName', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-400 uppercase">Dept</label>
-                        <input type="text" value={m.department} onChange={(e) => handleMemberChange(i, 'department', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-cyan transition-colors" />
+                        <label className="text-xs font-medium text-gray-600 uppercase">Dept</label>
+                        <input type="text" value={m.department} onChange={(e) => handleMemberChange(i, 'department', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-black focus:outline-none focus:border-neon-cyan transition-colors" />
                       </div>
                     </div>
                   </motion.div>
                 ))}
-                <button type="button" onClick={addTeamMember} className="w-full py-4 border-2 border-dashed border-white/10 rounded-2xl text-gray-500 hover:text-neon-cyan hover:border-neon-cyan transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest text-sm">
+                <button type="button" onClick={addTeamMember} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-600 hover:text-neon-cyan hover:border-neon-cyan transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest text-sm">
                   <Users className="w-5 h-5" /> Add Member
                 </button>
               </div>
@@ -361,8 +304,8 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
           {step === 4 && (
             <div className="space-y-8">
               <div className="text-center mb-6">
-                <h2 className="text-3xl font-futuristic font-bold text-white">Select Events</h2>
-                <p className="text-gray-400">Choose up to 1 event per category</p>
+                <h2 className="text-3xl font-futuristic font-bold text-black">Select Events</h2>
+                <p className="text-gray-600">Choose up to 1 event per category</p>
               </div>
 
               <div className="flex justify-center gap-2 mb-8">
@@ -395,10 +338,10 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
                           onChange={() => handleEventToggle(e.id)}
                         />
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white group-hover:text-neon-cyan transition-colors">
+                          <span className="text-sm font-bold text-gray-900 group-hover:text-neon-cyan transition-colors">
                             {EVENT_SCHEDULE[e.id].title}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-600">
                             {EVENT_SCHEDULE[e.id].venue}
                           </span>
                         </div>
@@ -451,7 +394,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
                   {paymentData.totalAmount > 0 && (
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300 block">UTR / Transaction Reference</label>
+                        <label className="text-sm font-medium text-gray-800 block">UTR / Transaction Reference</label>
                         <input
                           type="text"
                           value={formData.payment.utr}
@@ -473,12 +416,12 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
             )}
-            {step < 5 ? (
-              <button type="button" onClick={nextStep} className="btn-primary px-8 py-3 flex items-center gap-2 ml-auto">
+            {step < 4 ? (
+              <button type="button" onClick={nextStep} className="bg-neon-cyan text-black px-8 py-3 flex items-center gap-2 ml-auto font-bold hover:bg-black hover:text-neon-cyan transition-all">
                 Next <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <button type="submit" disabled={submitting} className="btn-primary px-12 py-4 text-lg shadow-neon-cyan disabled:opacity-50 ml-auto">
+              <button type="submit" disabled={submitting} className="bg-neon-cyan text-black px-12 py-4 text-lg font-bold shadow-neon-cyan disabled:opacity-50 ml-auto hover:bg-black hover:text-neon-cyan transition-all">
                 {submitting ? 'Processing...' : 'Complete Registration'}
               </button>
             )}
@@ -500,21 +443,21 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedEventId(null)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-white/60 backdrop-blur-md z-40"
           />
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-full w-full max-w-md bg-space-black border-l border-white/10 z-50 p-8 overflow-y-auto shadow-2xl"
+            className="fixed right-0 top-0 h-full w-full max-w-md bg-white/5 backdrop-blur-md border-l border-gray-200 z-50 p-8 overflow-y-auto shadow-2xl"
           >
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-futuristic font-bold text-white">Event Details</h3>
+              <h3 className="text-2xl font-futuristic font-bold text-gray-900">Event Details</h3>
               <button
                 type="button"
                 onClick={() => setSelectedEventId(null)}
-                className="p-2 text-gray-400 hover:text-white transition-colors"
+                className="p-2 text-gray-500 hover:text-gray-900 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -528,22 +471,22 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
                     <>
                       <div className="space-y-2">
                         <h4 className="text-3xl font-futuristic font-bold text-neon-cyan">{details.title}</h4>
-                        <p className="text-lg text-gray-300">{details.subtitle}</p>
+                        <p className="text-lg text-gray-800">{details.subtitle}</p>
                       </div>
 
                       <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                         <p className="text-sm font-medium text-gray-400 uppercase mb-2">Overview</p>
-                        <p className="text-gray-200 leading-relaxed">{details.description}</p>
+                        <p className="text-gray-700 leading-relaxed">{details.description}</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                          <p className="text-xs font-medium text-gray-400 uppercase mb-1">Session</p>
-                          <p className="text-white font-bold">{details.session}</p>
+                          <p className="text-xs font-medium text-gray-600 uppercase mb-1">Session</p>
+                          <p className="text-gray-900 font-bold">{details.session}</p>
                         </div>
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                          <p className="text-xs font-medium text-gray-400 uppercase mb-1">Venue</p>
-                          <p className="text-white font-bold">{details.venue}</p>
+                          <p className="text-xs font-medium text-gray-600 uppercase mb-1">Venue</p>
+                          <p className="text-gray-900 font-bold">{details.venue}</p>
                         </div>
                       </div>
 

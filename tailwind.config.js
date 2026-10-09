@@ -8,20 +8,20 @@ export default {
     extend: {
       colors: {
         space: {
-          black: '#0a0e1a',
-          dark: '#0d1224',
-          navy: '#111827',
+          black: '#0a0a0a',
+          dark: '#171717',
+          navy: '#171717',
         },
         neon: {
-          cyan: '#00e5ff',
-          blue: '#2979ff',
-          violet: '#8a2be2',
-          magenta: '#ff00ff',
+          cyan: '#1677e8',
+          blue: '#0756b8',
+          violet: '#4b238a',
+          magenta: '#f4511e',
         },
       },
       fontFamily: {
-        futuristic: ['Orbitron', 'sans-serif'],
-        sans: ['Inter', 'Poppins', 'sans-serif'],
+        futuristic: ['Bebas Neue', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
       },
       backgroundImage: {
         'glow-gradient': 'radial-gradient(circle at center, rgba(0, 229, 255, 0.15) 0%, transparent 70%)',

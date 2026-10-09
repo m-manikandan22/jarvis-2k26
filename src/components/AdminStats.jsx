@@ -39,7 +39,7 @@ const AdminStats = () => {
   if (error) return <div className="text-red-500 text-center py-20">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-space-black text-white p-8">
+    <div className="min-h-screen bg-white text-black p-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -18,7 +18,7 @@ import { TECHNICAL_EVENTS, NON_TECHNICAL_EVENTS } from '../config/events.jsx';
 const EventCard = ({ event, onOpen }) => (
   <motion.div
     whileHover={{ y: -10 }}
-    className="glass-card p-6 group cursor-pointer relative overflow-hidden"
+    className="glass-card p-6 group cursor-pointer relative overflow-hidden bg-white/5 backdrop-blur-md"
     onClick={() => onOpen(event)}
   >
     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 transition-opacity">
@@ -27,16 +27,16 @@ const EventCard = ({ event, onOpen }) => (
     <div className={`p-3 rounded-xl w-fit mb-4 bg-white/5 text-neon-cyan group-hover:bg-neon-cyan group-hover:text-space-black transition-colors`}>
       {event.icon || <div className="w-6 h-6 bg-neon-cyan/20 rounded-sm" />}
     </div>
-    <h3 className="text-xl font-futuristic font-bold text-white mb-1">{event.title}</h3>
+    <h3 className="text-xl font-futuristic font-bold text-black mb-1">{event.title}</h3>
     <p className="text-neon-blue text-sm font-medium mb-3">{event.subtitle}</p>
     <p className="text-gray-400 text-sm mb-6 line-clamp-2">{event.hook}</p>
-    <button className="text-xs font-bold uppercase tracking-widest text-neon-cyan group-hover:text-white transition-colors flex items-center gap-2">
+    <button className="text-neon-cyan group-hover:text-neon-cyan transition-colors flex items-center gap-2">
       View Details <ArrowRight className="w-3 h-3" />
     </button>
   </motion.div>
 );
 
-const Events = ({ selectedEvent, setSelectedEvent }) => {
+const Events = ({ selectedEvent, setSelectedEvent, setIsRegisterOpen }) => {
   return (
     <section className="py-24 px-6">
       <div className="max-w-7xl mx-auto">
@@ -45,7 +45,7 @@ const Events = ({ selectedEvent, setSelectedEvent }) => {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-5xl md:text-6xl font-futuristic font-bold mb-4 neon-text-cyan"
+            className="text-5xl md:text-6xl font-futuristic font-bold mb-4 text-black"
           >
             The Events
           </motion.h2>
@@ -64,7 +64,7 @@ const Events = ({ selectedEvent, setSelectedEvent }) => {
         <div className="mb-20">
           <div className="flex items-center gap-4 mb-10">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-            <h3 className="text-2xl font-futuristic font-bold text-white uppercase tracking-widest">Technical Events</h3>
+            <h3 className="text-2xl font-futuristic font-bold text-black uppercase tracking-widest">Technical Events</h3>
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -78,7 +78,7 @@ const Events = ({ selectedEvent, setSelectedEvent }) => {
         <div>
           <div className="flex items-center gap-4 mb-10">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-            <h3 className="text-2xl font-futuristic font-bold text-white uppercase tracking-widest">Non-Technical Events</h3>
+            <h3 className="text-2xl font-futuristic font-bold text-black uppercase tracking-widest">Non-Technical Events</h3>
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -96,14 +96,14 @@ const Events = ({ selectedEvent, setSelectedEvent }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-space-black/90 backdrop-blur-md cursor-pointer"
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-white/60 backdrop-blur-md cursor-pointer"
             onClick={() => setSelectedEvent(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="w-full max-w-2xl glass-card relative p-8 md:p-12 overflow-hidden"
+              className="w-full max-w-2xl glass-card relative p-8 md:p-12 overflow-hidden bg-white/5 backdrop-blur-md"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/10 blur-3xl" />
@@ -122,12 +122,12 @@ const Events = ({ selectedEvent, setSelectedEvent }) => {
                   {selectedEvent.icon || <div className="w-6 h-6 bg-neon-cyan/20 rounded-sm" />}
                 </div>
                 <div>
-                  <h3 className="text-3xl font-futuristic font-bold text-white">{selectedEvent.title}</h3>
+                  <h3 className="text-3xl font-futuristic font-bold text-black">{selectedEvent.title}</h3>
                   <p className="text-neon-blue font-medium">{selectedEvent.subtitle}</p>
                 </div>
               </div>
 
-              <p className="text-gray-300 text-lg leading-relaxed mb-10">
+              <p className="text-gray-800 text-lg leading-relaxed mb-10">
                 {selectedEvent.description}
               </p>
 
@@ -137,20 +137,20 @@ const Events = ({ selectedEvent, setSelectedEvent }) => {
                     <span className="text-xs uppercase tracking-widest text-gray-500 block">
                       {key.replace(/([A-Z])/g, ' $1').trim()}
                     </span>
-                    <span className="text-white font-medium">{value}</span>
+                    <span className="text-gray-800 font-medium">{value}</span>
                   </div>
                 ))}
               </div>
 
-              <button
-                onClick={() => {
-                  setSelectedEvent(null);
-                  window.dispatchEvent(new CustomEvent('open-registration'));
-                }}
-                className="btn-primary w-full py-4 text-lg"
-              >
-                Register for this Event
-              </button>
+                <button
+                  onClick={() => {
+                    setSelectedEvent(null);
+                    setIsRegisterOpen(true);
+                  }}
+                  className="bg-neon-cyan text-black w-full py-4 text-lg font-bold shadow-lg hover:bg-black hover:text-neon-cyan transition-all"
+                >
+                  Register for this Event
+                </button>
             </motion.div>
           </motion.div>
         )}
