@@ -164,7 +164,7 @@ const RegistrationForm = ({ onSuccess, setSelectedEvent }) => {
         <h2 className="text-3xl font-futuristic font-bold text-black mb-4">Registration Confirmed!</h2>
         <p className="text-gray-600 text-lg mb-4">Your team has been successfully registered for JARVIS 2K26.</p>
         <p className="text-neon-cyan font-mono text-xl mb-10">Team ID: {registrationId}</p>
-        <button onClick={onSuccess} className="btn-primary px-10 py-3">Return to Home</button>
+        <button onClick={onSuccess} className="button-primary px-10 py-3">Return to Home</button>
       </motion.div>
     );
   }

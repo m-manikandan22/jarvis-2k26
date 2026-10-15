@@ -70,8 +70,8 @@ export const TECHNICAL_EVENTS = [
     id: 'technova',
     subtitle: 'TECHNOVA',
     hook: 'Showcase your research on modern tech.',
-    description: 'A formal academic presentation platform. Students submit abstracts on modern technological advancements. Shortlisted participants present their research papers using slide decks to a panel of judges. Evaluated on: relevance of topic, depth of research, presentation skills, and ability to defend their work during Q&A.',
-    placeholders: { teamSize: '1-2 members', duration: '15-20 mins', venue: 'Auditorium', rules: 'Follow IEEE format' },
+    description: 'A formal academic presentation platform. Students submit abstracts on modern technological advancements. Abstracts must be submitted by 20/10/2026 to aids.pmctech@gmail.com. Shortlisted participants present their research papers using slide decks to a panel of judges. Evaluated on: relevance of topic, depth of research, presentation skills, and ability to defend their work during Q&A.',
+    placeholders: { teamSize: '1-4 members', duration: '15-20 mins', venue: 'Auditorium', rules: 'Follow IEEE format', deadline: '20/10/2026', email: 'aids.pmctech@gmail.com' },
     icon: <Presentation className="w-6 h-6" />,
   },
   {

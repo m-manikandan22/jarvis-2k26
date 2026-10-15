@@ -38,7 +38,7 @@ const EventCard = ({ event, onOpen }) => (
 
 const Events = ({ selectedEvent, setSelectedEvent, setIsRegisterOpen }) => {
   return (
-    <section className="py-24 px-6">
+    <section id="events" className="py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <motion.h2

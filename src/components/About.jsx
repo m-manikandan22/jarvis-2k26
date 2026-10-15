@@ -7,7 +7,7 @@ const About = () => (
         <p className="section-kicker mono"><span>01</span> / ABOUT JARVIS</p>
         <h2 id="about-title" className="display-heading">WHERE IDEAS<br/><span>MEET</span> INTELLIGENCE<span className="heading-period">.</span></h2>
         <p className="body-copy">JARVIS Symposium 2026 brings students together to explore artificial intelligence, data science, and the ideas shaping tomorrow. Built by the Department of Artificial Intelligence and Data Science Engineering at Er. Perumal Manimekalai College of Engineering, it is a day to learn, share, and experiment.</p>
-        <div className="about-stamp mono">JARVIS.EXE <span>— READY</span></div>
+
       </div>
       <div className="spec-sheet">
         <div className="spec-top mono"><span>EVENT_SPECIFICATION</span><span>01—04</span></div>

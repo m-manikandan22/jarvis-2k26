@@ -10,10 +10,10 @@ const Hero = ({ onRegisterClick, onExploreClick }) => (
       <motion.div className="hero-copy" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .65 }}>
         <p className="eyebrow mono"><span className="eyebrow-index">SYS_01</span> RETRO AI LABORATORY × TECH SYMPOSIUM</p>
         <h1 id="hero-title"><span>JARVIS</span><small>SYMPOSIUM</small><em>2026</em></h1>
-        <p className="hero-theme">AI FOR A BETTER TOMORROW<span className="orange-rule" /></p>
+        <p className="hero-theme text-black">AI FOR A BETTER TOMORROW<span className="orange-rule" /></p>
         <p className="hero-description">A meeting ground for ideas, intelligence, and the people building what comes next.</p>
-        <div className="hero-fee-tag mono" style={{ marginBottom: '1.5rem', fontSize: '0.9rem', color: '#fff', opacity: 0.9, letterSpacing: '1px' }}>
-          REGISTRATION FEE: <span style={{ color: '#00f3ff', fontWeight: 'bold' }}>₹200 PER HEAD</span>
+        <div className="hero-fee-tag mono mb-6 text-sm text-black opacity-90">
+          REGISTRATION FEE: <span className="text-neon-cyan font-bold">₹200 PER HEAD</span>
         </div>
         <div className="hero-actions">
           <button className="button button-primary" onClick={onRegisterClick}>REGISTER NOW <ArrowRight size={18} /></button>
