@@ -93,6 +93,7 @@ function buildMemberEmailSet_() {
   return emailSet;
 }
 function getRegistrations_() {
+  const teamData = getSheet_('Teams').getDataRange().getValues();
   const rows = teamData.slice(1);
   const paymentData = getSheet_('Payments').getDataRange().getValues().slice(1);
   const paymentMap = {};
