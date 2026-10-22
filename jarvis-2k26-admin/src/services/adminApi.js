@@ -24,7 +24,15 @@ async function request(payload) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseErr) {
+      // Attempt to get raw text for debugging
+      const raw = await response.text();
+      console.error('[ADMIN] Failed to parse JSON response. Raw response:', raw);
+      throw new Error('Invalid JSON response from server');
+    }
     console.log('[ADMIN] Parsed JSON result:', result);
     return result;
   } catch (err) {

@@ -322,11 +322,15 @@ function doPost(e) {
       }
         case 'verifyPaymentByEmail': {
           const email = (body.email || '').trim().toLowerCase();
+          console.log('[ADMIN] verifyPaymentByEmail requested for email:', email);
           if (!email) return jsonOut_({ status: 'error', message: 'email is required' });
           // Find member with matching email
           const members = getSheet_('Members').getDataRange().getValues().slice(1);
           const memberRow = members.find(row => String(row[6] || '').trim().toLowerCase() === email);
-          if (!memberRow) return jsonOut_({ status: 'error', message: 'No member found with that email' });
+          if (!memberRow) {
+            console.log('[ADMIN] No member found for email:', email);
+            return jsonOut_({ status: 'error', message: 'No member found with that email' });
+          }
           const teamId = memberRow[1];
           // Find payment row for this team
           const payments = getSheet_('Payments').getDataRange().getValues();
@@ -337,11 +341,15 @@ function doPost(e) {
             const newId = Utilities.getUuid();
             const now = new Date();
             sheet.appendRow([newId, teamId, 0, '', '', 'Verified', now, now]);
+            console.log('[ADMIN] Created new payment record for teamId', teamId, 'with Verified status');
             // Return success – newly created record is already verified
             return jsonOut_({ status: 'success', message: 'Payment verified by email.' });
           }
           const currentStatus = payments[paymentRowIndex][5];
-          if (currentStatus === 'Verified') return jsonOut_({ status: 'error', message: 'Payment already verified' });
+          if (currentStatus === 'Verified') {
+            console.log('[ADMIN] Payment already verified for teamId', teamId);
+            return jsonOut_({ status: 'error', message: 'Payment already verified' });
+          }
           // Update status with lock (covers case where record existed but was pending)
           try {
             const lock = LockService.getScriptLock();
@@ -351,7 +359,9 @@ function doPost(e) {
             sheet.getRange(rowIdx, 6).setValue('Verified');
             sheet.getRange(rowIdx, 8).setValue(new Date());
             lock.releaseLock();
+            console.log('[ADMIN] Updated payment status to Verified for teamId', teamId);
           } catch (err) {
+            console.error('[ADMIN] Error updating payment status for teamId', teamId, ':', err.message);
             return jsonOut_({ status: 'error', message: err.message });
           }
           return jsonOut_({ status: 'success', message: 'Payment verified by email.' });
