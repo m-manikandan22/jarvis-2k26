@@ -5,6 +5,7 @@
 
 const SESSION_EXPIRY_SECONDS = 7200; // 2 hours
 
+// Event schedule mapping – keys must exactly match the event IDs stored in the 'RegistrationEvents' sheet (column D).
 const EVENT_SCHEDULE = {
   'technova': { title: 'PAPER PRESENTAION', session: 'FULL_DAY', venue: 'Auditorium' },
   'coderelay': { title: 'RELAY CODING', session: 'MORNING', venue: 'NH1' },
@@ -168,10 +169,9 @@ function sendETicketEmail_(teamId) {
         <p>Hi ${esc_(captain.fullName)},</p>
         <p>Congratulations!</p>
         <p>Your payment has been verified, and your registration for <strong>JARVIS 2K26</strong> is now fully confirmed.</p>
-        <div style="background-color: #f9f9f9; border-left: 4px solid #000; padding: 20px; margin: 25px 0; text-align: center;">
-          <span style="display: block; font-size: 14px; color: #666; margin-bottom: 5px;">Registration ID</span>
-          <strong style="font-size: 22px; color: #000; font-family: monospace;">${teamId}</strong>
-        </div>
+          <div style="margin-top: 20px; text-align: center;">
+            <img src="${'https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(teamId) + '\u0026size=150x150'}" alt="QR Code" style="width:150px;height:150px;" />
+          </div>
         <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; color: #000;">Team Details</h3>
         <p style="margin: 5px 0;"><strong>Team Name:</strong> ${esc_(details.teamName)}</p>
         <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 25px; color: #000;">Your Registered Events</h3>
@@ -223,11 +223,55 @@ function updatePaymentStatus_(paymentId, status) {
   return { status: 'success' };
 }
 
-function doPost(e) {
-  try {
-    const body = JSON.parse(e.postData.contents);
-    const { requestType, sessionToken } = body;
+function getEventParticipants_(eventId) {
+  // Returns an array of participant info for the given eventId.
+  // Each object contains: fullName, email, phone, teamName, teamId, session
+  const membersData = getSheet_('Members').getDataRange().getValues().slice(1);
+  const eventsData = getSheet_('RegistrationEvents').getDataRange().getValues().slice(1);
+  const teamsData = getSheet_('Teams').getDataRange().getValues().slice(1);
 
+  // Build maps for quick lookup
+  const memberMap = {};
+  membersData.forEach(row => {
+    const memberId = row[0];
+    memberMap[memberId] = {
+      fullName: row[2] || '',
+      email: row[6] || '',
+      phone: row[7] || ''
+    };
+  });
+
+  const teamMap = {};
+  teamsData.forEach(row => {
+    const teamId = row[0];
+    teamMap[teamId] = row[1] || '';
+  });
+
+  const participants = [];
+  eventsData.forEach(row => {
+    const evId = row[3];
+    if (evId !== eventId) return;
+    const teamId = row[1];
+    const memberId = row[2];
+    const memberInfo = memberMap[memberId] || { fullName: '', email: '', phone: '' };
+    participants.push({
+      fullName: memberInfo.fullName,
+      email: memberInfo.email,
+      phone: memberInfo.phone,
+      teamName: teamMap[teamId] || '',
+      teamId: teamId,
+      session: row[4] || ''
+    });
+  });
+
+  return participants;
+}
+
+function doPost(e) {
+  const body = JSON.parse(e.postData.contents);
+  const { requestType, sessionToken } = body;
+
+  try {
     if (requestType === 'login') {
       if (verifyCredentials_(body.username, body.password)) {
         return jsonOut_({ status: 'success', sessionToken: createSession_() });
@@ -257,32 +301,70 @@ function doPost(e) {
           return jsonOut_({ status: 'error', message: err.message });
         }
 
-        // Automatic E-Ticket Sending
-        let mail = { sent: false, reason: 'Unknown error' };
+        // NOTE: Email sending is now handled manually via the "sendTicket" endpoint.
+        return jsonOut_({ status: 'success', message: 'Payment status updated to Verified.' });
+      }
+      case 'verifyPaymentByEmail': {
+        const email = (body.email || '').trim().toLowerCase();
+        if (!email) return jsonOut_({ status: 'error', message: 'email is required' });
+        // Find member with matching email
+        const members = getSheet_('Members').getDataRange().getValues().slice(1);
+        const memberRow = members.find(row => String(row[6] || '').trim().toLowerCase() === email);
+        if (!memberRow) return jsonOut_({ status: 'error', message: 'No member found with that email' });
+        const teamId = memberRow[1];
+        // Find payment row for this team
+        const payments = getSheet_('Payments').getDataRange().getValues();
+        const paymentRowIndex = payments.findIndex(row => row[1] === teamId);
+        if (paymentRowIndex <= 0) return jsonOut_({ status: 'error', message: 'No payment record found for this team' });
+        const currentStatus = payments[paymentRowIndex][5];
+        if (currentStatus === 'Verified') return jsonOut_({ status: 'error', message: 'Payment already verified' });
+        // Update status with lock
         try {
-          const pRow = getSheet_('Payments').getDataRange().getValues().find(row => row[0] === pId);
-          if (pRow) mail = sendETicketEmail_(pRow[1]);
-        } catch (e) {
-          mail = { sent: false, reason: e.message };
+          const lock = LockService.getScriptLock();
+          lock.waitLock(10000);
+          const sheet = getSheet_('Payments');
+          const rowIdx = paymentRowIndex + 1; // include header row
+          sheet.getRange(rowIdx, 6).setValue('Verified');
+          sheet.getRange(rowIdx, 8).setValue(new Date());
+          lock.releaseLock();
+        } catch (err) {
+          return jsonOut_({ status: 'error', message: err.message });
+        }
+        return jsonOut_({ status: 'success', message: 'Payment verified by email.' });
+      }
+      case 'sendTicket': {
+        const { paymentId } = body;
+        if (!paymentId) return jsonOut_({ status: 'error', message: 'paymentId required' });
+        const payments = getSheet_('Payments').getDataRange().getValues();
+        const paymentRowIndex = payments.findIndex(row => row[0] === paymentId);
+        if (paymentRowIndex <= 0) return jsonOut_({ status: 'error', message: 'Payment not found' });
+        const status = payments[paymentRowIndex][5];
+        if (status !== 'Verified') return jsonOut_({ status: 'error', message: 'Payment not verified yet' });
+        const teamId = payments[paymentRowIndex][1];
+        const mailResult = sendETicketEmail_(teamId);
+        return jsonOut_(mailResult);
+        }
+        case 'listEventIds': {
+          // Returns the set of event IDs defined in the schedule and those actually registered.
+          const scheduleIds = Object.keys(EVENT_SCHEDULE);
+          const sheet = getSheet_('RegistrationEvents');
+          const rows = sheet.getDataRange().getValues().slice(1);
+          const registeredIds = [...new Set(rows.map(r => r[3]))];
+          return jsonOut_({ status: 'success', data: { scheduleIds, registeredIds } });
+        }
+        case 'getEventParticipants': {
+          const { eventId } = body;
+          if (!eventId) return jsonOut_({ status: 'error', message: 'eventId required' });
+          const participants = getEventParticipants_(eventId);
+          return jsonOut_({ status: 'success', data: participants });
         }
 
-        return jsonOut_({
-          status: 'success',
-          emailSent: mail.sent,
-          message: mail.sent ? `Verified. E-ticket sent to captain (${mail.to}).` : `Verified, but email failed: ${mail.reason}`
-        });
-      }
-      case 'resendTicket': {
-        const pRow = getSheet_('Payments').getDataRange().getValues().find(row => row[0] === body.paymentId);
-        if (!pRow || pRow[5] !== 'Verified') return jsonOut_({ status: 'error', message: 'Only verified payments can resend tickets.' });
-        const mail = sendETicketEmail_(pRow[1]);
-        return jsonOut_(mail.sent ? { status: 'success', message: `Ticket resent to ${mail.to}` } : { status: 'error', message: mail.reason });
-      }
-      case 'rejectPayment': {
+       case 'rejectPayment': {
         updatePaymentStatus_(body.paymentId, 'Rejected');
         return jsonOut_({ status: 'success', message: 'Payment rejected.' });
       }
       default: return jsonOut_({ status: 'error', message: 'Invalid request type' });
+    }
     }
   } catch (err) {
     return jsonOut_({ status: 'error', message: 'Server error: ' + err.message });

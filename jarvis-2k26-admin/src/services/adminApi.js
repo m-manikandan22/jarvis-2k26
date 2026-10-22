@@ -78,6 +78,30 @@ export const adminApi = {
       paymentId,
     });
   },
+  // New: verify payment by the payer's email address (admin confirms email)
+  verifyPaymentByEmail: async (sessionToken, email) => {
+    return request({
+      requestType: 'verifyPaymentByEmail',
+      sessionToken,
+      email,
+    });
+  },
+  // New: list event IDs to verify schedule vs registration
+  listEventIds: async (sessionToken) => {
+    return request({
+      requestType: 'listEventIds',
+      sessionToken,
+    });
+  },
+
+  // New: send e‑ticket for a verified payment (admin triggers manually)
+  sendTicket: async (sessionToken, paymentId) => {
+    return request({
+      requestType: 'sendTicket',
+      sessionToken,
+      paymentId,
+    });
+  },
 
   rejectPayment: async (sessionToken, paymentId) => {
     return request({
