@@ -58,7 +58,9 @@ function Payments() {
         alert(`Error: ${result.message}`);
       }
     } catch (err) {
-      alert('Network error occurred while verifying payment.');
+      // Show the underlying error message if available
+      const msg = err?.message || 'Network error occurred while verifying payment.';
+      alert(`Error: ${msg}`);
     } finally {
       setActionLoading(null);
     }
