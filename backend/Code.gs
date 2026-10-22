@@ -335,7 +335,14 @@ function listParticipantPayments_() {
 }
 
 function doPost(e) {
-  const body = JSON.parse(e.postData.contents);
+  let body;
+  try {
+    body = JSON.parse(e.postData.contents);
+  } catch (parseErr) {
+    console.error('[ADMIN] Failed to parse request JSON:', parseErr.message);
+    return jsonOut_({ status: 'error', message: 'Invalid request payload' });
+  }
+  console.log('[ADMIN] doPost invoked with body:', JSON.stringify(body));
   const { requestType, sessionToken } = body;
 
   try {
