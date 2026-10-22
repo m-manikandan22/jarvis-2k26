@@ -83,8 +83,16 @@ function getDashboardStats_() {
   };
 }
 
+function buildMemberEmailSet_() {
+  const members = getSheet_('Members').getDataRange().getValues().slice(1);
+  const emailSet = new Set();
+  members.forEach(row => {
+    const email = String(row[6] || '').trim().toLowerCase();
+    if (email) emailSet.add(email);
+  });
+  return emailSet;
+}
 function getRegistrations_() {
-  const teamData = getSheet_('Teams').getDataRange().getValues();
   const rows = teamData.slice(1);
   const paymentData = getSheet_('Payments').getDataRange().getValues().slice(1);
   const paymentMap = {};
@@ -119,9 +127,24 @@ function getRegistrationDetails_(teamId) {
   const teamRow = teamSheet.getDataRange().getValues().find(row => row[0] === teamId);
   if (!teamRow) throw new Error('Registration not found.');
 
+  // Build email lookup set for matching
+  const emailSet = buildMemberEmailSet_();
+
   const members = getSheet_('Members').getDataRange().getValues().slice(1)
     .filter(row => row[1] === teamId)
-    .map(row => ({ memberId: row[0], fullName: row[2], college: row[3], department: row[4], year: row[5], email: row[6], phone: row[7] }));
+    .map(row => {
+      const emailNorm = String(row[6] || '').trim().toLowerCase();
+      return {
+        memberId: row[0],
+        fullName: row[2],
+        college: row[3],
+        department: row[4],
+        year: row[5],
+        email: row[6],
+        phone: row[7],
+        isMember: emailSet.has(emailNorm)
+      };
+    });
 
   const events = getSheet_('RegistrationEvents').getDataRange().getValues().slice(1)
     .filter(row => row[1] === teamId)
@@ -225,19 +248,24 @@ function updatePaymentStatus_(paymentId, status) {
 
 function getEventParticipants_(eventId) {
   // Returns an array of participant info for the given eventId.
-  // Each object contains: fullName, email, phone, teamName, teamId, session
+  // Each object contains: fullName, email, phone, teamName, teamId, session, isMember
   const membersData = getSheet_('Members').getDataRange().getValues().slice(1);
   const eventsData = getSheet_('RegistrationEvents').getDataRange().getValues().slice(1);
   const teamsData = getSheet_('Teams').getDataRange().getValues().slice(1);
+
+  // Build email lookup set for matching
+  const emailSet = buildMemberEmailSet_();
 
   // Build maps for quick lookup
   const memberMap = {};
   membersData.forEach(row => {
     const memberId = row[0];
+    const email = String(row[6] || '').trim().toLowerCase();
     memberMap[memberId] = {
       fullName: row[2] || '',
       email: row[6] || '',
-      phone: row[7] || ''
+      phone: row[7] || '',
+      isMember: emailSet.has(email)
     };
   });
 
@@ -253,14 +281,15 @@ function getEventParticipants_(eventId) {
     if (evId !== eventId) return;
     const teamId = row[1];
     const memberId = row[2];
-    const memberInfo = memberMap[memberId] || { fullName: '', email: '', phone: '' };
+    const memberInfo = memberMap[memberId] || { fullName: '', email: '', phone: '', isMember: false };
     participants.push({
       fullName: memberInfo.fullName,
       email: memberInfo.email,
       phone: memberInfo.phone,
       teamName: teamMap[teamId] || '',
       teamId: teamId,
-      session: row[4] || ''
+      session: row[4] || '',
+      isMember: memberInfo.isMember
     });
   });
 

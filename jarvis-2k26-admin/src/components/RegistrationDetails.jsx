@@ -129,7 +129,7 @@ function RegistrationDetails() {
                   <div className="text-xs text-gray-600 space-y-1">
                     <p className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {m.college}</p>
                     <p className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> {m.department} | Year {m.year}</p>
-                    <p className="flex items-center gap-1"><span>✉️</span> {m.email}</p>
+                    <p className="flex items-center gap-1"><span>✉️</span> {m.email} {m.isMember ? (<span className="ml-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">Member</span>) : (<span className="ml-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">Not Member</span>)}</p>
                     <p className="flex items-center gap-1"><span>📞</span> {m.phone}</p>
                   </div>
                 </div>
