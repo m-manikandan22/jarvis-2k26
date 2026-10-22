@@ -247,54 +247,40 @@ function updatePaymentStatus_(paymentId, status) {
   return { status: 'success' };
 }
 
-function getEventParticipants_(eventId) {
-  // Returns an array of participant info for the given eventId.
-  // Each object contains: fullName, email, phone, teamName, teamId, session, isMember
-  const membersData = getSheet_('Members').getDataRange().getValues().slice(1);
-  const eventsData = getSheet_('RegistrationEvents').getDataRange().getValues().slice(1);
-  const teamsData = getSheet_('Teams').getDataRange().getValues().slice(1);
+function listParticipantPayments_() {
+  // Returns a deduplicated list of participants (unique by normalized email)
+  // with payment status derived from the team's payment record (if any).
+  const memberRows = getSheet_('Members').getDataRange().getValues().slice(1);
+  const teamRows = getSheet_('Teams').getDataRange().getValues().slice(1);
+  const paymentRows = getSheet_('Payments').getDataRange().getValues().slice(1);
 
-  // Build email lookup set for matching
-  const emailSet = buildMemberEmailSet_();
-
-  // Build maps for quick lookup
-  const memberMap = {};
-  membersData.forEach(row => {
-    const memberId = row[0];
-    const email = String(row[6] || '').trim().toLowerCase();
-    memberMap[memberId] = {
-      fullName: row[2] || '',
-      email: row[6] || '',
-      phone: row[7] || '',
-      isMember: emailSet.has(email)
-    };
-  });
-
+  // Build team name map
   const teamMap = {};
-  teamsData.forEach(row => {
-    const teamId = row[0];
-    teamMap[teamId] = row[1] || '';
+  teamRows.forEach(row => { teamMap[row[0]] = row[1] || ''; });
+
+  // Build payment status map per teamId
+  const paymentMap = {};
+  paymentRows.forEach(row => { paymentMap[row[1]] = row[5] || 'Pending'; });
+
+  // Deduplicate participants by normalized email
+  const participantMap = {};
+  memberRows.forEach(row => {
+    const rawEmail = String(row[6] || '').trim();
+    if (!rawEmail) return; // skip blank emails
+    const normEmail = rawEmail.toLowerCase();
+    if (!participantMap[normEmail]) {
+      const teamId = row[1];
+      participantMap[normEmail] = {
+        email: rawEmail, // preserve original for display
+        fullName: row[2] || '',
+        teamId,
+        teamName: teamMap[teamId] || '',
+        paymentStatus: paymentMap[teamId] || 'Pending'
+      };
+    }
   });
 
-  const participants = [];
-  eventsData.forEach(row => {
-    const evId = row[3];
-    if (evId !== eventId) return;
-    const teamId = row[1];
-    const memberId = row[2];
-    const memberInfo = memberMap[memberId] || { fullName: '', email: '', phone: '', isMember: false };
-    participants.push({
-      fullName: memberInfo.fullName,
-      email: memberInfo.email,
-      phone: memberInfo.phone,
-      teamName: teamMap[teamId] || '',
-      teamId: teamId,
-      session: row[4] || '',
-      isMember: memberInfo.isMember
-    });
-  });
-
-  return participants;
+  return Object.values(participantMap);
 }
 
 function doPost(e) {
@@ -334,34 +320,42 @@ function doPost(e) {
         // NOTE: Email sending is now handled manually via the "sendTicket" endpoint.
         return jsonOut_({ status: 'success', message: 'Payment status updated to Verified.' });
       }
-      case 'verifyPaymentByEmail': {
-        const email = (body.email || '').trim().toLowerCase();
-        if (!email) return jsonOut_({ status: 'error', message: 'email is required' });
-        // Find member with matching email
-        const members = getSheet_('Members').getDataRange().getValues().slice(1);
-        const memberRow = members.find(row => String(row[6] || '').trim().toLowerCase() === email);
-        if (!memberRow) return jsonOut_({ status: 'error', message: 'No member found with that email' });
-        const teamId = memberRow[1];
-        // Find payment row for this team
-        const payments = getSheet_('Payments').getDataRange().getValues();
-        const paymentRowIndex = payments.findIndex(row => row[1] === teamId);
-        if (paymentRowIndex <= 0) return jsonOut_({ status: 'error', message: 'No payment record found for this team' });
-        const currentStatus = payments[paymentRowIndex][5];
-        if (currentStatus === 'Verified') return jsonOut_({ status: 'error', message: 'Payment already verified' });
-        // Update status with lock
-        try {
-          const lock = LockService.getScriptLock();
-          lock.waitLock(10000);
-          const sheet = getSheet_('Payments');
-          const rowIdx = paymentRowIndex + 1; // include header row
-          sheet.getRange(rowIdx, 6).setValue('Verified');
-          sheet.getRange(rowIdx, 8).setValue(new Date());
-          lock.releaseLock();
-        } catch (err) {
-          return jsonOut_({ status: 'error', message: err.message });
+        case 'verifyPaymentByEmail': {
+          const email = (body.email || '').trim().toLowerCase();
+          if (!email) return jsonOut_({ status: 'error', message: 'email is required' });
+          // Find member with matching email
+          const members = getSheet_('Members').getDataRange().getValues().slice(1);
+          const memberRow = members.find(row => String(row[6] || '').trim().toLowerCase() === email);
+          if (!memberRow) return jsonOut_({ status: 'error', message: 'No member found with that email' });
+          const teamId = memberRow[1];
+          // Find payment row for this team
+          const payments = getSheet_('Payments').getDataRange().getValues();
+          let paymentRowIndex = payments.findIndex(row => row[1] === teamId);
+          if (paymentRowIndex < 0) {
+            // No payment record – create one with Verified status
+            const sheet = getSheet_('Payments');
+            const newId = Utilities.getUuid();
+            const now = new Date();
+            sheet.appendRow([newId, teamId, 0, '', '', 'Verified', now, now]);
+            // Return success – newly created record is already verified
+            return jsonOut_({ status: 'success', message: 'Payment verified by email.' });
+          }
+          const currentStatus = payments[paymentRowIndex][5];
+          if (currentStatus === 'Verified') return jsonOut_({ status: 'error', message: 'Payment already verified' });
+          // Update status with lock (covers case where record existed but was pending)
+          try {
+            const lock = LockService.getScriptLock();
+            lock.waitLock(10000);
+            const sheet = getSheet_('Payments');
+            const rowIdx = paymentRowIndex + 1; // include header row
+            sheet.getRange(rowIdx, 6).setValue('Verified');
+            sheet.getRange(rowIdx, 8).setValue(new Date());
+            lock.releaseLock();
+          } catch (err) {
+            return jsonOut_({ status: 'error', message: err.message });
+          }
+          return jsonOut_({ status: 'success', message: 'Payment verified by email.' });
         }
-        return jsonOut_({ status: 'success', message: 'Payment verified by email.' });
-      }
       case 'sendTicket': {
         const { paymentId } = body;
         if (!paymentId) return jsonOut_({ status: 'error', message: 'paymentId required' });
@@ -373,6 +367,12 @@ function doPost(e) {
         const teamId = payments[paymentRowIndex][1];
         const mailResult = sendETicketEmail_(teamId);
         return jsonOut_(mailResult);
+        }
+        case 'listParticipantPayments': {
+          const participants = listParticipantPayments_();
+          // Log count for diagnostics (does not expose personal data)
+          console.log('[ADMIN] listParticipantPayments returned', participants.length, 'records');
+          return jsonOut_({ status: 'success', data: participants });
         }
         case 'listEventIds': {
           // Returns the set of event IDs defined in the schedule and those actually registered.
@@ -390,10 +390,10 @@ function doPost(e) {
           return jsonOut_({ status: 'success', data: participants });
         }
 
-       case 'rejectPayment': {
-        updatePaymentStatus_(body.paymentId, 'Rejected');
-        return jsonOut_({ status: 'success', message: 'Payment rejected.' });
-      }
+        case 'rejectPayment': {
+          // Rejecting payments is no longer supported in the Payment Management workflow.
+          return jsonOut_({ status: 'error', message: 'Reject payment not allowed.' });
+        }
       default: return jsonOut_({ status: 'error', message: 'Invalid request type' });
     }
   } catch (err) {

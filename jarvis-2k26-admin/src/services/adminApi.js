@@ -78,12 +78,10 @@ export const adminApi = {
       paymentId,
     });
   },
-  // New: verify payment by the payer's email address (admin confirms email)
-  verifyPaymentByEmail: async (sessionToken, email) => {
+  listParticipantPayments: async (sessionToken) => {
     return request({
-      requestType: 'verifyPaymentByEmail',
+      requestType: 'listParticipantPayments',
       sessionToken,
-      email,
     });
   },
   // New: list event IDs to verify schedule vs registration
@@ -103,13 +101,7 @@ export const adminApi = {
     });
   },
 
-  rejectPayment: async (sessionToken, paymentId) => {
-    return request({
-      requestType: 'rejectPayment',
-      sessionToken,
-      paymentId,
-    });
-  },
+
 
   getEventParticipants: async (sessionToken, eventId) => {
     return request({
