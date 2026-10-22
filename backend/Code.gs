@@ -163,6 +163,57 @@ function getRegistrationDetails_(teamId) {
   };
 }
 
+function getEventParticipants_(eventId) {
+  // Returns an array of participant info for the given eventId.
+  // Each object contains: fullName, email, phone, teamName, teamId, session, isMember
+  const membersData = getSheet_('Members').getDataRange().getValues().slice(1);
+  const eventsData = getSheet_('RegistrationEvents').getDataRange().getValues().slice(1);
+  const teamsData = getSheet_('Teams').getDataRange().getValues().slice(1);
+
+  // Email set for member verification
+  const emailSet = buildMemberEmailSet_();
+
+  // Build member map: memberId -> {fullName,email,phone,isMember}
+  const memberMap = {};
+  membersData.forEach(row => {
+    const memberId = row[0];
+    const emailNorm = String(row[6] || '').trim().toLowerCase();
+    memberMap[memberId] = {
+      fullName: row[2] || '',
+      email: row[6] || '',
+      phone: row[7] || '',
+      isMember: emailSet.has(emailNorm)
+    };
+  });
+
+  // Build team map: teamId -> teamName
+  const teamMap = {};
+  teamsData.forEach(row => {
+    const teamId = row[0];
+    teamMap[teamId] = row[1] || '';
+  });
+
+  const participants = [];
+  eventsData.forEach(row => {
+    const evId = row[3];
+    if (evId !== eventId) return;
+    const teamId = row[1];
+    const memberId = row[2];
+    const info = memberMap[memberId] || { fullName: '', email: '', phone: '', isMember: false };
+    participants.push({
+      fullName: info.fullName,
+      email: info.email,
+      phone: info.phone,
+      teamName: teamMap[teamId] || '',
+      teamId,
+      session: row[4] || '',
+      isMember: info.isMember
+    });
+  });
+
+  return participants;
+}
+
 function sendETicketEmail_(teamId) {
   const details = getRegistrationDetails_(teamId);
   const captain = details.members.find(m => m.memberId === details.captainId) || details.members[0];
