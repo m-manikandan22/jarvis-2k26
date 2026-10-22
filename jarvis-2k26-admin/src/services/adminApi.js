@@ -86,6 +86,13 @@ export const adminApi = {
       paymentId,
     });
   },
+  verifyPaymentByEmail: async (sessionToken, email) => {
+    return request({
+      requestType: 'verifyPaymentByEmail',
+      sessionToken,
+      email,
+    });
+  },
   listParticipantPayments: async (sessionToken) => {
     return request({
       requestType: 'listParticipantPayments',
