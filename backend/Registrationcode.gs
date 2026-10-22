@@ -13,16 +13,16 @@
  */
 
 const EVENT_SCHEDULE = {
-  technova:       { title: 'TECHNOVA',           session: 'FULL_DAY', venue: 'Auditorium' },
-  coderelay:      { title: 'CODE RUSH',          session: 'MORNING',  venue: 'NH1' },
-  funfiesta:      { title: 'FUNFEST',            session: 'MORNING',  venue: 'NH2' },
-  listenlink:     { title: 'LISTEN & WIN',       session: 'MORNING',  venue: 'NH3' },
-  bytebattles:    { title: 'TECH CLASH',         session: 'MORNING',  venue: 'NH4' },
-  cyberarena:     { title: 'ARENA X',            session: 'FULL_DAY', venue: 'NH5' },
-  hackonomics:    { title: 'BRAINBID',           session: 'EVENING',  venue: 'NH1' },
-  aiwhisperer:    { title: 'PROMPT WARS',        session: 'EVENING',  venue: 'NH2' },
-  corporatequest: { title: 'THE FINAL ROUND',    session: 'EVENING',  venue: 'NH3' },
-  chaosroom:      { title: 'ESCAPE ROOM: CHAOS', session: 'EVENING',  venue: 'NH4' }
+  technova:       { title: 'PAPER PRESENTAION',           session: 'FULL_DAY', venue: 'Auditorium' },
+  coderelay:      { title: 'RELAY CODING',          session: 'MORNING',  venue: 'NH1' },
+  funfiesta:      { title: 'CARNIVAL',            session: 'MORNING',  venue: 'NH2' },
+  listenlink:     { title: 'MYSTRY BOX',       session: 'MORNING',  venue: 'NH3' },
+  bytebattles:    { title: 'TECH DEBATE',         session: 'MORNING',  venue: 'NH4' },
+  cyberarena:     { title: 'E-SPORTS',            session: 'FULL_DAY', venue: 'NH5' },
+  hackonomics:    { title: 'GUESS THE TECHIES',           session: 'EVENING',  venue: 'NH1' },
+  aiwhisperer:    { title: 'PROMPT ENGG BATTLE',        session: 'EVENING',  venue: 'NH2' },
+  corporatequest: { title: 'HR INTERVIEW',    session: 'EVENING',  venue: 'NH3' },
+  chaosroom:      { title: 'THE CHAOS ROOM', session: 'EVENING',  venue: 'NH4' }
 };
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
