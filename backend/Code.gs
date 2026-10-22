@@ -355,6 +355,7 @@ function doPost(e) {
         case 'getEventParticipants': {
           const { eventId } = body;
           if (!eventId) return jsonOut_({ status: 'error', message: 'eventId required' });
+          if (!EVENT_SCHEDULE.hasOwnProperty(eventId)) return jsonOut_({ status: 'error', message: 'Invalid event ID' });
           const participants = getEventParticipants_(eventId);
           return jsonOut_({ status: 'success', data: participants });
         }
@@ -364,7 +365,6 @@ function doPost(e) {
         return jsonOut_({ status: 'success', message: 'Payment rejected.' });
       }
       default: return jsonOut_({ status: 'error', message: 'Invalid request type' });
-    }
     }
   } catch (err) {
     return jsonOut_({ status: 'error', message: 'Server error: ' + err.message });
